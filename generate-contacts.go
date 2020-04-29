@@ -8,8 +8,10 @@ import (
 	"time"
 )
 
-const csvFile string = "no-dups-anonymized-sonar-data.csv"
+// const csvFile string = "no-dups-anonymized-sonar-data.csv"
+const csvFile string = "no-dups-day1.csv"
 const newCsvFile string = "contacts-parsed-sonar-data.csv"
+const idsFileCsv string = "mac-to-id-data-day1.csv"
 const macAddr int = 0
 const loc int = 1
 const timestamp int = 2
@@ -38,7 +40,7 @@ func min(a, b int64) int64 {
 
 func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 	var contacts, nodeContacts int64
-	var nodeContactLimit int64 = 20
+	var nodeContactLimit int64 = 10
 
 	for key, mySlice := range myMap {
 		fmt.Println("mySlice size " + strconv.Itoa(len(mySlice)) + " location " + key)
@@ -59,7 +61,10 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 				// if node A arrives at the location X
 				// and node B was already there, create a
 				// contact opportunity
-				if mySlice[i].start > mySlice[j].start {
+				// take into account that my start time
+				// has to be before the node B leaves
+				if (mySlice[i].start > mySlice[j].start) &&
+					(mySlice[i].start < mySlice[j].end) {
 					// t1 := time.Unix(mySlice[i].start, 0)
 					// t2 := time.Unix(mySlice[i].end, 0)
 					// fmt.Println(mySlice[i].nodeId, t1, t2, key)
@@ -90,6 +95,12 @@ func main() {
 	day2Map = make(map[string][]EventRecord)
 	day3Map = make(map[string][]EventRecord)
 
+	idsFile, err := os.OpenFile(idsFileCsv, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	writer := csv.NewWriter(idsFile)
+
 	file, err := os.OpenFile(csvFile, os.O_RDWR, 0660)
 	if err != nil {
 		panic(err)
@@ -112,12 +123,25 @@ func main() {
 	startTime, prevTime := t.Unix(), t.Unix()
 	fmt.Println(startTime)
 
+	err = writer.Write([]string{
+		strNodeID,
+		result[1][loc],
+		result[1][timestamp],
+	})
+
 	for i := 2; i < len(result); i++ {
 		// convert the timestamp to unix time
 		t, err = time.Parse(layout, result[i][timestamp])
 		// set the nodeID
 		if result[i][macAddr] == currentMac {
 			result[i][macAddr] = strNodeID
+
+			// write id to file in order to count nodes for simulation
+			err = writer.Write([]string{
+				strNodeID,
+				result[i][loc],
+				result[i][timestamp],
+			})
 			/*
 			 * if the day and the location have not changed,
 			 * contiune to look for the moment the node left that
@@ -174,6 +198,13 @@ func main() {
 			strNodeID = strconv.Itoa(nodeID)
 			result[i][macAddr] = strNodeID
 
+			// write id to file in order to count nodes for simulation
+			err = writer.Write([]string{
+				strNodeID,
+				result[i][loc],
+				result[i][timestamp],
+			})
+
 			if prevTime == startTime {
 				location = result[i][loc]
 				day = t.Day()
@@ -211,13 +242,15 @@ func main() {
 		}
 	}
 
+	fmt.Println("No of nodes = ", (nodeID + 1))
+
 	file.Close()
 
 	file, err = os.OpenFile(newCsvFile, os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		panic(err)
 	}
-	writer := csv.NewWriter(file)
+	writer = csv.NewWriter(file)
 
 	// establish contacts between nodes
 	createContacts(day1Map, writer)
