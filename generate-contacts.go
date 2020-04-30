@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -18,11 +19,6 @@ const timestamp int = 2
 const day1 int = 18
 const day2 int = 19
 const day3 int = 20
-
-// subtract 3 hours from the timestamp because while
-// converting the timestamp to unix time, it does so
-// in regards to the local time which is to utc + 3
-const utc3Hours = 3 * 60 * 60
 
 var result [][]string
 
@@ -96,6 +92,10 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 }
 
 func main() {
+	numbPtr := flag.Int("nodes", 1000, "the number of nodes for mobemu simulation")
+	flag.Parse()
+	fmt.Println("nodes =", *numbPtr)
+
 	day1Map = make(map[string][]EventRecord)
 	day2Map = make(map[string][]EventRecord)
 	day3Map = make(map[string][]EventRecord)
@@ -125,7 +125,7 @@ func main() {
 	day := t.Day()
 	fmt.Println(day)
 	location := result[1][loc]
-	startTime, prevTime := t.Unix()-utc3Hours, t.Unix()-utc3Hours
+	startTime, prevTime := t.Unix(), t.Unix()
 	fmt.Println(startTime)
 
 	err = writer.Write([]string{
@@ -135,6 +135,10 @@ func main() {
 	})
 
 	for i := 2; i < len(result); i++ {
+		if nodeID >= *numbPtr {
+			break
+		}
+
 		// convert the timestamp to unix time
 		t, err = time.Parse(layout, result[i][timestamp])
 		// set the nodeID
@@ -154,7 +158,7 @@ func main() {
 			 */
 			// fmt.Printf("node %d loc1 %s loc2 %s day1 %d day2 %d\n", nodeID, location, result[i][loc], day, t.Day())
 			if result[i][loc] == location && t.Day() == day {
-				prevTime = t.Unix() - utc3Hours
+				prevTime = t.Unix()
 				continue
 			} else {
 				/*
@@ -166,7 +170,7 @@ func main() {
 				if prevTime == startTime {
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
+					startTime, prevTime = t.Unix(), t.Unix()
 					continue
 				} else {
 					event := EventRecord{
@@ -194,7 +198,7 @@ func main() {
 
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
+					startTime, prevTime = t.Unix(), t.Unix()
 				}
 			}
 		} else {
@@ -213,7 +217,7 @@ func main() {
 			if prevTime == startTime {
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
+				startTime, prevTime = t.Unix(), t.Unix()
 				continue
 			} else {
 				lastID := nodeID - 1
@@ -242,7 +246,7 @@ func main() {
 				// set the variables for the new node
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
+				startTime, prevTime = t.Unix(), t.Unix()
 			}
 		}
 	}
