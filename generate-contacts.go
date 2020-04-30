@@ -19,6 +19,11 @@ const day1 int = 18
 const day2 int = 19
 const day3 int = 20
 
+// subtract 3 hours from the timestamp because while
+// converting the timestamp to unix time, it does so
+// in regards to the local time which is to utc + 3
+const utc3Hours = 3 * 60 * 60
+
 var result [][]string
 
 type EventRecord struct {
@@ -120,7 +125,7 @@ func main() {
 	day := t.Day()
 	fmt.Println(day)
 	location := result[1][loc]
-	startTime, prevTime := t.Unix(), t.Unix()
+	startTime, prevTime := t.Unix()-utc3Hours, t.Unix()-utc3Hours
 	fmt.Println(startTime)
 
 	err = writer.Write([]string{
@@ -149,7 +154,7 @@ func main() {
 			 */
 			// fmt.Printf("node %d loc1 %s loc2 %s day1 %d day2 %d\n", nodeID, location, result[i][loc], day, t.Day())
 			if result[i][loc] == location && t.Day() == day {
-				prevTime = t.Unix()
+				prevTime = t.Unix() - utc3Hours
 				continue
 			} else {
 				/*
@@ -161,7 +166,7 @@ func main() {
 				if prevTime == startTime {
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix(), t.Unix()
+					startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
 					continue
 				} else {
 					event := EventRecord{
@@ -189,7 +194,7 @@ func main() {
 
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix(), t.Unix()
+					startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
 				}
 			}
 		} else {
@@ -208,7 +213,7 @@ func main() {
 			if prevTime == startTime {
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix(), t.Unix()
+				startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
 				continue
 			} else {
 				lastID := nodeID - 1
@@ -237,7 +242,7 @@ func main() {
 				// set the variables for the new node
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix(), t.Unix()
+				startTime, prevTime = t.Unix()-utc3Hours, t.Unix()-utc3Hours
 			}
 		}
 	}
