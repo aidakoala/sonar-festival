@@ -20,6 +20,11 @@ const day1 int = 18
 const day2 int = 19
 const day3 int = 20
 
+// subtract 3 hours from the timestamp because while
+// converting the timestamp to unix time, it does so
+// in regards to the local time which is to utc + 3
+const utc3Hours = 3 * 60 * 60
+
 var result [][]string
 
 type EventRecord struct {
@@ -41,10 +46,9 @@ func min(a, b int64) int64 {
 
 func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 	var contacts, nodeContacts int64
-	var nodeContactLimit int64 = 10
+	var nodeContactLimit int64 = 100
 
 	for key, mySlice := range myMap {
-		fmt.Println("mySlice size " + strconv.Itoa(len(mySlice)) + " location " + key)
 		contacts = 0
 		for i := 0; i < len(mySlice)-1; i++ {
 			nodeContacts = 0
@@ -87,12 +91,14 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 				}
 			}
 		}
-		fmt.Println("contacts at location " + key + " " + strconv.FormatInt(contacts, 10))
+		fmt.Println("no_nodes", strconv.Itoa(len(mySlice)), "location", key,
+			"contacts", strconv.FormatInt(contacts, 10))
 	}
 }
 
 func main() {
 	numbPtr := flag.Int("nodes", 1000, "the number of nodes for mobemu simulation")
+	utcPrt := flag.Int64("utcDiff", utc3Hours, "the number to subtract in order to obtain the utc time")
 	flag.Parse()
 	fmt.Println("nodes =", *numbPtr)
 
@@ -110,7 +116,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	reader := csv.NewReader(file)
 	// read all records
 	result, _ = reader.ReadAll()
@@ -119,13 +124,14 @@ func main() {
 	strNodeID := strconv.Itoa(nodeID)
 	currentMac := result[1][macAddr]
 	result[1][macAddr] = strNodeID
-	// convert the timestamp to unix time
+	// convert the timestamp
 	layout := "2006-01-02 15:04:05"
 	t, err := time.Parse(layout, result[1][timestamp])
 	day := t.Day()
 	fmt.Println(day)
 	location := result[1][loc]
-	startTime, prevTime := t.Unix(), t.Unix()
+	// convert the timestamp to unix time
+	startTime, prevTime := t.Unix()-*utcPrt, t.Unix()-*utcPrt
 	fmt.Println(startTime)
 
 	err = writer.Write([]string{
@@ -139,7 +145,6 @@ func main() {
 			break
 		}
 
-		// convert the timestamp to unix time
 		t, err = time.Parse(layout, result[i][timestamp])
 		// set the nodeID
 		if result[i][macAddr] == currentMac {
@@ -158,7 +163,7 @@ func main() {
 			 */
 			// fmt.Printf("node %d loc1 %s loc2 %s day1 %d day2 %d\n", nodeID, location, result[i][loc], day, t.Day())
 			if result[i][loc] == location && t.Day() == day {
-				prevTime = t.Unix()
+				prevTime = t.Unix() - *utcPrt
 				continue
 			} else {
 				/*
@@ -170,7 +175,7 @@ func main() {
 				if prevTime == startTime {
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix(), t.Unix()
+					startTime, prevTime = t.Unix()-*utcPrt, t.Unix()-*utcPrt
 					continue
 				} else {
 					event := EventRecord{
@@ -198,7 +203,7 @@ func main() {
 
 					location = result[i][loc]
 					day = t.Day()
-					startTime, prevTime = t.Unix(), t.Unix()
+					startTime, prevTime = t.Unix()-*utcPrt, t.Unix()-*utcPrt
 				}
 			}
 		} else {
@@ -217,7 +222,7 @@ func main() {
 			if prevTime == startTime {
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix(), t.Unix()
+				startTime, prevTime = t.Unix()-*utcPrt, t.Unix()-*utcPrt
 				continue
 			} else {
 				lastID := nodeID - 1
@@ -246,7 +251,7 @@ func main() {
 				// set the variables for the new node
 				location = result[i][loc]
 				day = t.Day()
-				startTime, prevTime = t.Unix(), t.Unix()
+				startTime, prevTime = t.Unix()-*utcPrt, t.Unix()-*utcPrt
 			}
 		}
 	}
