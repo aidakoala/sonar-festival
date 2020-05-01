@@ -251,7 +251,7 @@ func main() {
 		}
 	}
 
-	fmt.Println("No of nodes = ", (nodeID + 1))
+	fmt.Println("No of nodes = ", nodeID)
 
 	file.Close()
 
