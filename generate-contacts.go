@@ -6,13 +6,19 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 )
 
-// const csvFile string = "no-dups-anonymized-sonar-data.csv"
 const csvFile string = "no-dups-day1.csv"
-const newCsvFile string = "contacts-parsed-sonar-data.csv"
-const idsFileCsv string = "mac-to-id-data-day1.csv"
+
+// const csvFileDay1 string = "no-dups-day1.csv"
+const conactsDay1Csv string = "contacts-day1.csv"
+const conactsDay2Csv string = "contacts-day2.csv"
+const conactsDay3Csv string = "contacts-day3.csv"
+const idsDay1Csv string = "mac-to-id-data-day1.csv"
+const idsDay2Csv string = "mac-to-id-data-day2.csv"
+const idsDay3Csv string = "mac-to-id-data-day3.csv"
 const macAddr int = 0
 const loc int = 1
 const timestamp int = 2
@@ -26,6 +32,10 @@ const day3 int = 20
 const utc3Hours = 3 * 60 * 60
 
 var result [][]string
+
+var writer1 *csv.Writer
+var writer2 *csv.Writer
+var writer3 *csv.Writer
 
 type EventRecord struct {
 	nodeId int
@@ -44,22 +54,29 @@ func min(a, b int64) int64 {
 	return b
 }
 
-func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
-	var contacts, nodeContacts int64
-	var nodeContactLimit int64 = 100
+func createContacts(myMap map[string][]EventRecord, writer *csv.Writer, wg *sync.WaitGroup) {
+	defer wg.Done()
 
+	var contacts, nodeContacts int64
+	// var nodeContactLimit int64 = 1000
+
+	err := writer.Write([]string{
+		"id1", "id2", "tstart", "tend", "location",
+	})
+	if err != nil {
+		panic(err)
+	}
 	for key, mySlice := range myMap {
 		contacts = 0
 		for i := 0; i < len(mySlice)-1; i++ {
 			nodeContacts = 0
 			nodeId := mySlice[i].nodeId
 			for j := i + 1; j < len(mySlice); j++ {
-				if nodeContacts >= nodeContactLimit {
-					break
-				}
+				// if nodeContacts >= nodeContactLimit {
+				// 	break
+				// }
 				// this condition is necessary because a node might return
 				// multiple times during a day at a certain location
-				// fmt.Println(nodeContactLimit, nodeContacts)
 				if nodeId == mySlice[j].nodeId {
 					continue
 				}
@@ -70,16 +87,9 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 				// has to be before the node B leaves
 				if (mySlice[i].start > mySlice[j].start) &&
 					(mySlice[i].start < mySlice[j].end) {
-					// t1 := time.Unix(mySlice[i].start, 0)
-					// t2 := time.Unix(mySlice[i].end, 0)
-					// fmt.Println(mySlice[i].nodeId, t1, t2, key)
-					// t1 = time.Unix(mySlice[j].start, 0)
-					// t2 = time.Unix(mySlice[j].end, 0)
-					// fmt.Println(mySlice[j].nodeId, t1, t2, key)
-					// fmt.Println()
 					nodeContacts++
 					contacts++
-					err := writer.Write([]string{
+					err = writer.Write([]string{
 						strconv.Itoa(nodeId),
 						strconv.Itoa(mySlice[j].nodeId),
 						strconv.FormatInt(mySlice[i].start, 10),
@@ -94,6 +104,104 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer) {
 		fmt.Println("no_nodes", strconv.Itoa(len(mySlice)), "location", key,
 			"contacts", strconv.FormatInt(contacts, 10))
 	}
+
+	writer.Flush()
+}
+
+func initIdWriters() []*os.File {
+	var files []*os.File
+
+	idsFile1, err := os.OpenFile(idsDay1Csv, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, idsFile1)
+	writer1 = csv.NewWriter(idsFile1)
+	err = writer1.Write([]string{
+		"id", "location", "timestamp",
+	})
+	idsFile2, err := os.OpenFile(idsDay2Csv, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, idsFile2)
+	writer2 = csv.NewWriter(idsFile2)
+	err = writer1.Write([]string{
+		"id", "location", "timestamp",
+	})
+	idsFile3, err := os.OpenFile(idsDay3Csv, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, idsFile3)
+	writer3 = csv.NewWriter(idsFile3)
+	err = writer3.Write([]string{
+		"id", "location", "timestamp",
+	})
+
+	return files
+}
+
+func initContactWriters() []*os.File {
+	var files []*os.File
+
+	file, err := os.OpenFile(conactsDay1Csv, os.O_CREATE|os.O_WRONLY, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, file)
+	writer1 = csv.NewWriter(file)
+	file, err = os.OpenFile(conactsDay2Csv, os.O_CREATE|os.O_WRONLY, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, file)
+	writer2 = csv.NewWriter(file)
+	file, err = os.OpenFile(conactsDay3Csv, os.O_CREATE|os.O_WRONLY, 0660)
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, file)
+	writer3 = csv.NewWriter(file)
+
+	return files
+}
+
+func writeIdCsv(csvLine []string, day int, nodeId string) {
+	switch day {
+	case day1:
+		err := writer1.Write([]string{
+			nodeId,
+			csvLine[loc],
+			csvLine[timestamp],
+		})
+		if err != nil {
+			panic(err)
+		}
+		break
+	case day2:
+		err := writer2.Write([]string{
+			nodeId,
+			csvLine[loc],
+			csvLine[timestamp],
+		})
+		if err != nil {
+			panic(err)
+		}
+		break
+	case day3:
+		err := writer3.Write([]string{
+			nodeId,
+			csvLine[loc],
+			csvLine[timestamp],
+		})
+		if err != nil {
+			panic(err)
+		}
+		break
+	default:
+		fmt.Println("bad day format")
+	}
 }
 
 func main() {
@@ -106,11 +214,7 @@ func main() {
 	day2Map = make(map[string][]EventRecord)
 	day3Map = make(map[string][]EventRecord)
 
-	idsFile, err := os.OpenFile(idsFileCsv, os.O_RDWR|os.O_CREATE, 0660)
-	if err != nil {
-		panic(err)
-	}
-	writer := csv.NewWriter(idsFile)
+	idFiles := initIdWriters()
 
 	file, err := os.OpenFile(csvFile, os.O_RDWR, 0660)
 	if err != nil {
@@ -134,14 +238,11 @@ func main() {
 	startTime, prevTime := t.Unix()-*utcPrt, t.Unix()-*utcPrt
 	fmt.Println(startTime)
 
-	err = writer.Write([]string{
-		strNodeID,
-		result[1][loc],
-		result[1][timestamp],
-	})
+	writeIdCsv(result[1], t.Day(), strNodeID)
 
 	for i := 2; i < len(result); i++ {
 		if nodeID >= *numbPtr {
+			fmt.Println("nodeId = ", nodeID, "break")
 			break
 		}
 
@@ -151,11 +252,7 @@ func main() {
 			result[i][macAddr] = strNodeID
 
 			// write id to file in order to count nodes for simulation
-			err = writer.Write([]string{
-				strNodeID,
-				result[i][loc],
-				result[i][timestamp],
-			})
+			writeIdCsv(result[i], t.Day(), strNodeID)
 			/*
 			 * if the day and the location have not changed,
 			 * contiune to look for the moment the node left that
@@ -213,11 +310,7 @@ func main() {
 			result[i][macAddr] = strNodeID
 
 			// write id to file in order to count nodes for simulation
-			err = writer.Write([]string{
-				strNodeID,
-				result[i][loc],
-				result[i][timestamp],
-			})
+			writeIdCsv(result[i], t.Day(), strNodeID)
 
 			if prevTime == startTime {
 				location = result[i][loc]
@@ -258,16 +351,27 @@ func main() {
 
 	fmt.Println("No of nodes = ", nodeID)
 
+	writer1.Flush()
+	writer2.Flush()
+	writer3.Flush()
+	idFiles[0].Close()
+	idFiles[1].Close()
+	idFiles[2].Close()
 	file.Close()
 
-	file, err = os.OpenFile(newCsvFile, os.O_CREATE|os.O_WRONLY, 0660)
-	if err != nil {
-		panic(err)
-	}
-	writer = csv.NewWriter(file)
+	contactFiles := initContactWriters()
 
+	// use a WaitGroup to sync all 3 goroutines
+	var wg sync.WaitGroup
 	// establish contacts between nodes
-	createContacts(day1Map, writer)
-	// createContacts(day2Map, writer)
-	// createContacts(day3Map, writer)
+	wg.Add(1)
+	go createContacts(day1Map, writer1, &wg)
+	// wg.Add(1)
+	// go createContacts(day2Map, writer2, &wg)
+	// wg.Add(1)
+	// go createContacts(day3Map, writer3, &wg)
+
+	contactFiles[0].Close()
+	contactFiles[1].Close()
+	contactFiles[2].Close()
 }
