@@ -14,6 +14,10 @@ const csvFileDay1 string = "no-dups-day1.csv"
 const csvFileDay2 string = "no-dups-day2.csv"
 const csvFileDay3 string = "no-dups-day3.csv"
 
+const durationsDay1Csv = "durations-day1.csv"
+const durationsDay2Csv = "durations-day2.csv"
+const durationsDay3Csv = "durations-day3.csv"
+
 const conactsDay1Csv string = "contacts-day1.csv"
 const conactsDay2Csv string = "contacts-day2.csv"
 const conactsDay3Csv string = "contacts-day3.csv"
@@ -44,11 +48,19 @@ func min(a, b int64) int64 {
 	return b
 }
 
-func createContacts(myMap map[string][]EventRecord, writer *csv.Writer, day int) {
+func createContacts(myMap map[string][]EventRecord, csvContactsFile string, day int, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	var contacts, nodeContacts int64
 	var nodeContactLimit int64 = 150
 
-	err := writer.Write([]string{
+	file, err := os.OpenFile(csvContactsFile, os.O_CREATE|os.O_WRONLY, 0660)
+	if err != nil {
+		panic(err)
+	}
+	writer := csv.NewWriter(file)
+
+	err = writer.Write([]string{
 		"id1", "id2", "tstart", "tend", "location",
 	})
 	if err != nil {
@@ -94,9 +106,10 @@ func createContacts(myMap map[string][]EventRecord, writer *csv.Writer, day int)
 	}
 
 	writer.Flush()
+	file.Close()
 }
 
-func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile string, csvContactsFile string, wg *sync.WaitGroup) {
+func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile string, csvContactsFile string, dayMap map[string][]EventRecord, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	var result [][]string
@@ -120,9 +133,6 @@ func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile str
 	err = writer.Write([]string{
 		"id", "location", "timestamp",
 	})
-
-	// crate hashMap for locations
-	dayMap := make(map[string][]EventRecord)
 
 	nodeID := 0
 	strNodeID := strconv.Itoa(nodeID)
@@ -157,8 +167,6 @@ func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile str
 		t, err = time.Parse(layout, result[i][timestamp])
 		// set the nodeID
 		if result[i][macAddr] == currentMac {
-			// result[i][macAddr] = strNodeID
-
 			// write id to file in order to count nodes for simulation
 			err := writer.Write([]string{
 				strNodeID,
@@ -179,7 +187,7 @@ func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile str
 				continue
 			} else {
 				/*
-				 * the node was spotted only once at the scene
+				 * OUTLIER REMOVAL the node was spotted only once at the scene
 				 * and that information is useless, thus we
 				 * prepare the  variables for the next day or
 				 * location
@@ -206,7 +214,6 @@ func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile str
 			currentMac = result[i][macAddr]
 			nodeID++
 			strNodeID = strconv.Itoa(nodeID)
-			// result[i][macAddr] = strNodeID
 
 			// write id to file in order to count nodes for simulation
 			err := writer.Write([]string{
@@ -244,17 +251,44 @@ func macsToIds(utcPrt *int64, numbPtr *int, csvInFile string, csvMacToIdFile str
 
 	writer.Flush()
 	idsFile.Close()
+}
 
-	// generate contacts
-	file, err = os.OpenFile(csvContactsFile, os.O_CREATE|os.O_WRONLY, 0660)
-	if err != nil {
-		panic(err)
+func computeTimePerDay(dayMap map[string][]EventRecord, csvFile string, durations map[int]int64, blacklist map[int]bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for _, mySlice := range dayMap {
+		for i := 0; i < len(mySlice)-1; i++ {
+			dt := (mySlice[i].end - mySlice[i].start) / 60
+			// test if there is an enty for nodeId
+			_, ok := durations[mySlice[i].nodeId]
+			if ok {
+				durations[mySlice[i].nodeId] += dt
+			} else {
+				durations[mySlice[i].nodeId] = dt
+			}
+		}
 	}
-	writer = csv.NewWriter(file)
 
-	createContacts(dayMap, writer, day)
+	// create a blacklist of nodes who spent less than 60 min at the festival
+	for key, val := range durations {
+		if val < 60 {
+			blacklist[key] = true
+		}
+	}
 
-	file.Close()
+	// file, err := os.OpenFile(csvFile, os.O_CREATE|os.O_WRONLY, 0660)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// writer := csv.NewWriter(file)
+
+	// writer.Write([]string{"id", "duration"})
+	// for key, value := range durations {
+	// 	writer.Write([]string{strconv.Itoa(key), strconv.FormatInt(value, 10)})
+	// }
+
+	// writer.Flush()
+	// file.Close()
 }
 
 func main() {
@@ -263,14 +297,37 @@ func main() {
 	flag.Parse()
 	fmt.Println("nodes =", *numbPtr)
 
+	day1Map := make(map[string][]EventRecord)
+	day2Map := make(map[string][]EventRecord)
+	day3Map := make(map[string][]EventRecord)
+
 	// use a WaitGroup to sync all 3 goroutines
 	var wg sync.WaitGroup
 	wg.Add(1)
-	go macsToIds(utcPrt, numbPtr, csvFileDay1, idsDay1Csv, conactsDay1Csv, &wg)
+	go macsToIds(utcPrt, numbPtr, csvFileDay1, idsDay1Csv, conactsDay1Csv, day1Map, &wg)
 	wg.Add(1)
-	go macsToIds(utcPrt, numbPtr, csvFileDay2, idsDay2Csv, conactsDay2Csv, &wg)
+	go macsToIds(utcPrt, numbPtr, csvFileDay2, idsDay2Csv, conactsDay2Csv, day2Map, &wg)
 	wg.Add(1)
-	go macsToIds(utcPrt, numbPtr, csvFileDay3, idsDay3Csv, conactsDay3Csv, &wg)
+	go macsToIds(utcPrt, numbPtr, csvFileDay3, idsDay3Csv, conactsDay3Csv, day3Map, &wg)
 
 	wg.Wait()
+
+	durations1 := make(map[int]int64)
+	durations2 := make(map[int]int64)
+	durations3 := make(map[int]int64)
+	// blacklists
+	blacklist1 := make(map[int]bool)
+	blacklist2 := make(map[int]bool)
+	blacklist3 := make(map[int]bool)
+
+	// compute the total time a node spent at the festival per day
+	wg.Add(1)
+	go computeTimePerDay(day1Map, durationsDay1Csv, durations1, blacklist1, &wg)
+	wg.Add(1)
+	go computeTimePerDay(day2Map, durationsDay2Csv, durations2, blacklist2, &wg)
+	wg.Add(1)
+	go computeTimePerDay(day3Map, durationsDay3Csv, durations3, blacklist3, &wg)
+
+	wg.Wait()
+
 }
