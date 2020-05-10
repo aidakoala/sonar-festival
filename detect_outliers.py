@@ -23,15 +23,17 @@ def find_anomalies(data):
 
 def main():
 	durations = pd.read_csv(sys.argv[1])
+	day = sys.argv[2]
 	# check if the data has a normal distribution
 	max_val = max(durations['duration'])
 	print(max_val)
 	# esantionare la 20 de min
 	plt.hist(durations['duration'], color = 'blue', edgecolor = 'black', bins = max_val / 20)
-	plt.title('Histogram of the time spent by a node at the festival day 3')
+	plt.title('Histogram of the time spent by a node at the festival day ' + day)
 	plt.xlabel('time spent at the festival')
 	plt.ylabel('nodes')
-	plt.show()
+	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/outliers_day' + day)
+	# plt.show()
 
 	# print(find_anomalies(durations['duration']))
 

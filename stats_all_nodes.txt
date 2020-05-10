@@ -24,3 +24,38 @@ no_nodes 27097 location 3 contacts 3826915
 no_nodes 13280 location 4 contacts 1729555
 no_nodes 5690  location 5 contacts 563292
 no_nodes 4906  location 6 contacts 498115
+
+-------
+After blacklisting nodes who spent less than 
+60 min in total at the festival or more than 10 horus
+at the same location.
+
+18 No of nodes =  13745
+18 No of nodes =  9616
+
+no_nodes 3480  location 1 contacts 308839
+no_nodes 2570  location 2 contacts 207307
+no_nodes 20061 location 3 contacts 2833653
+no_nodes 9081  location 4 contacts 1124427
+no_nodes 3939  location 5 contacts 406409
+no_nodes 6691  location 6 contacts 742784
+
+19 No of nodes =  14913
+19 No of nodes =  10637
+
+no_nodes 7157  location 1 contacts 830278
+no_nodes 9072  location 2 contacts 1103864
+no_nodes 24834 location 3 contacts 3467009
+no_nodes 12618 location 4 contacts 1695894
+no_nodes 8257  location 5 contacts 877426
+no_nodes 3100  location 6 contacts 256759
+
+20 No of nodes =  14898
+20 No of nodes =  10441
+
+no_nodes 7243  location 1 contacts 831014
+no_nodes 6933  location 2 contacts 782996
+no_nodes 25206 location 3 contacts 3549674
+no_nodes 11263 location 4 contacts 1459874
+no_nodes 4994  location 5 contacts 484864
+no_nodes 4071  location 6 contacts 390996
