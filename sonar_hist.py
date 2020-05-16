@@ -22,15 +22,14 @@ def hist_location_popularity(nodes, day):
 	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/day' + day + '/location_popularity.png')
 	# plt.show()
 
-def hist_nodes_hours(nodes, day):
+def hist_nodes_hours(nodes, day, file_name):
 	hours = map(get_hour_timestamp, nodes['tstart'])
 	plt.hist(hours, color = 'blue', edgecolor = 'black', bins = [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24])
 	plt.title('Nodes distribution over a day')
 	plt.xlabel('hour')
 	plt.ylabel('nodes')
-	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/day' + day + '/hist_nodes_hours.png')
+	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/day' + day + '/' + file_name)
 	# plt.show()
-
 
 def hist_contacts_per_location(contacts, day):
 	plt.hist(contacts['location'], color = 'blue', edgecolor = 'black', bins = [1,2,3,4,5,6,7])
@@ -58,18 +57,28 @@ def hist_average_contact_duration(contacts, day):
 	plt.title('Histogram of average durtion of contacts')
 	plt.xlabel('location')
 	plt.ylabel('contacts')
-	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/day' + day + '/avg_contact_duration.png')
+	plt.savefig('/home/ghidusa/Documents/Disertation/Sonar Data/day' + day + '/avg_contact_duration_hour_16.png')
 	# plt.show()
+
+
 
 def main():
 	# read data and examine first 10 rows
-	nodes = pd.read_csv(sys.argv[1])
+	# nodes = pd.read_csv(sys.argv[1])
 	# print(nodes.head(10))
 	# hist_location_popularity(nodes, sys.argv[3])
-	# hist_nodes_hours(nodes, sys.argv[3])
+	# file_name = 'hist_nodes_hour_loc_' + sys.argv[4] + '.png'
+	# location = sys.argv[4]
+	# is_loc = nodes['location']==6
+	# nodes_loc = nodes[is_loc]
+	# hist_nodes_hours(nodes_loc, sys.argv[3], file_name)
 
 	contacts = pd.read_csv(sys.argv[2])
 	# hist_contacts_per_location(contacts, sys.argv[3])
-	hist_average_contact_duration(contacts, sys.argv[3])
+	file_name = 'contacts_loc_hour_' + sys.argv[4] + '.png'
+	location = sys.argv[4]
+	filter_var = (contacts['tstart']==1434632400) & (contacts['location']==3)
+	contacts_hour = contacts[filter_var]
+	hist_average_contact_duration(contacts_hour, sys.argv[3])
 
 main()

@@ -227,7 +227,7 @@ func computeTimePerDay(events []WifiEvent, csvFile string, durations map[int]int
 
 	for i := 0; i < len(events)-1; i++ {
 		dt := (events[i].event.end - events[i].event.start) / 60
-		// if a node spent more than 10 hours at the same location
+		// OUTLIER REMOVAL if a node spent more than 10 hours at the same location
 		// blacklist it
 		if dt >= 600 {
 			blacklist[events[i].event.nodeId] = true
@@ -260,7 +260,7 @@ func computeTimePerDay(events []WifiEvent, csvFile string, durations map[int]int
 	writer.Flush()
 	file.Close()
 
-	// create a blacklist of nodes who spent less than 60 min at the festival
+	// OUTLIER REMOVAL create a blacklist of nodes who spent less than 60 min at the festival
 	for key, val := range durations {
 		if val < 60 {
 			blacklist[key] = true
